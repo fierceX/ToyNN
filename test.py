@@ -5,7 +5,7 @@ import sys
 from io import BytesIO
 import gzip
 import struct
-import NNlayer
+from NNlayer import *
 
 def read_data(label_url, image_url):
     with gzip.open(label_url) as flbl:
@@ -32,7 +32,7 @@ def onehot(label):
     return np.array(oh)
 
 (train_lable, train_image) = read_data(
-        'train-labels-idx1-ubyte.gz', 'train-images-idx3-ubyte.gz')
+        '../train-labels-idx1-ubyte.gz', '../train-images-idx3-ubyte.gz')
 
 def data_iter(data,label,bs):
     idx = list(range(label.shape[0]))
@@ -40,24 +40,32 @@ def data_iter(data,label,bs):
     for i in range(0,data.shape[0],bs):
         j = np.array(idx[i:min(i+bs,label.shape[0])])
         yield np.take(data,j,axis=0),np.take(label,j)
-net = NNlayer.NetModel()
-net.add(NNlayer.dens(784,30,'dens1'))
-net.add(NNlayer.activate(model='relu',name='relu'))
-net.add(NNlayer.dens(30,10,'dens2'))
-net.add(NNlayer.activate(model='sigmoid',name='sigmoid'))
+net = NetModel()
+net.add(Flatten("flatten"))
+net.add(dens(784,30,'dens1'))
+net.add(activate(model='relu',name='relu'))
+net.add(dens(30,10,'dens2'))
+net.add(activate(model='sigmoid',name='sigmoid'))
+
+# net.add(Conv2D([3,3,1],16,0,2,'conv1'))
+# net.add(Pool(2,2,mode='max',name='pool1'))
+# net.add(activate(model='relu',name='relu'))
+# net.add(Flatten("flatten"))
+# net.add(dens(576,10,'dens1'))
+# net.add(activate(model='sigmoid',name='sigmoid'))
 
 
-for i in range(1):
+for i in range(10):
     cost = 0.0
     for data, label in data_iter(train_image,train_lable,20):
         data = data.astype('float32') / 255
-        data = np.reshape(data,(20,-1))
+        data = np.reshape(data,(data.shape[0],data.shape[1],data.shape[2],1))
         l = onehot(label)
-        out = net.forward(data.T)
+        out = net.forward(data)
         minicost,delta = compute_cost(out.T,l)
         cost += minicost
         net.backward(delta)
-        net.update_params(0.05)
+        net.update_params(0.1)
     print(cost/len(train_lable))
 
-net.save_params("net.params")
+# net.save_params("net_con.params")
